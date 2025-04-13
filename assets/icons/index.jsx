@@ -21,7 +21,7 @@ import Delete from './Delete';
 import Logout from './logout';
 import Image from './Image';
 import Video from './Video';
-import Home from './home';
+import Home from './Home';
 
 const icons = {
     home: Home,

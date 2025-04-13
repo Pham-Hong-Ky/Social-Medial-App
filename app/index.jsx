@@ -1,15 +1,14 @@
-import SrceenWrapper from "@/components/ScreenWrapper";
+import Loading from "@/components/Loading";
 import { useRouter } from "expo-router";
-import { Button, Text } from "react-native";
+import { View } from "react-native";
 
 export default function Index() {
 
   const router = useRouter();
 
   return (
-    <SrceenWrapper>
-      <Text>Social Media App</Text>
-      <Button title="welcome" onPress={() => router.push('welcome')}></Button>
-    </SrceenWrapper>
+    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <Loading />
+    </View>
   );
 }

@@ -1,0 +1,3 @@
+export const supabaseUrl = 'https://toayvaoetbipphrrexgg.supabase.co'
+
+export const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvYXl2YW9ldGJpcHBocnJleGdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQxMTIxMTMsImV4cCI6MjA1OTY4ODExM30.-UVXgKY3-Rm_W4ivbEmpnTsqfARfpzVYDJhCapR53I0'

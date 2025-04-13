@@ -8,6 +8,7 @@ import { wp, hp } from "@/helper/common";
 import { useRef, useState } from 'react';
 import Input from '@/components/Input';
 import Buton from '@/components/Button';
+import { supabase } from '@/lib/supabase';
 
 const SignUp = () => {
 
@@ -15,16 +16,33 @@ const SignUp = () => {
     const emailRef = useRef("");
     const passwordRef = useRef("");
     const [loading, setLoading] = useState(false);
-    const comfirmPasswordRef = useRef("");
+    const nameRef = useRef("");
 
     const onSubmit = async () => {
-        if(!emailRef.current || !passwordRef.current || !comfirmPasswordRef.current) {
-            Alert.alert("Login", "Please fill all fields");
-            return;
+        if (!emailRef.current || !passwordRef.current || !nameRef.current) {
+            Alert.alert("Sign Up","Please fill all the fields")
+            return
         }
-        if(passwordRef.current !== comfirmPasswordRef.current) {
-            Alert.alert("Login", "Passwords do not match");
-            return;
+
+        let name = nameRef.current.trim();
+        let email = emailRef.current.trim();
+        let password = passwordRef.current.trim();
+
+        setLoading(true)
+
+        const { data: {session}, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: {
+                    name,
+                },
+            },
+        });
+        setLoading(false)
+
+        if (error) {
+            Alert.alert("Sign Up", error.message)
         }
     }
 
@@ -44,6 +62,11 @@ const SignUp = () => {
                         Please fill the details to create an account
                     </Text>
                     <Input
+                        placeholder='Enter your name'
+                        icon={<Icon name='user' size={26} strokeWidth={1.6} />}
+                        onChangeText={value => nameRef.current = value}
+                    />
+                    <Input
                         placeholder='Enter your email'
                         icon={<Icon name='mail' size={26} strokeWidth={1.6} />}
                         onChangeText={value => emailRef.current = value}
@@ -52,12 +75,6 @@ const SignUp = () => {
                         placeholder='Enter your password'
                         icon={<Icon name='lock' size={26} strokeWidth={1.6} />}
                         onChangeText={value => passwordRef.current = value}
-                        secureTextEntry
-                    />
-                    <Input
-                        placeholder='Confirm your password'
-                        icon={<Icon name='lock' size={26} strokeWidth={1.6} />}
-                        onChangeText={value => comfirmPasswordRef.current = value}
                         secureTextEntry
                     />
                     <Buton title='SignUp' loading={loading} onPress={onSubmit} />

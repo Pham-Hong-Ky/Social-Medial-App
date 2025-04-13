@@ -8,6 +8,7 @@ import { wp, hp } from "@/helper/common";
 import { useRef, useState } from 'react';
 import Input from '@/components/Input';
 import Buton from '@/components/Button';
+import { supabase } from '@/lib/supabase';
 
 const Login = () => {
 
@@ -20,6 +21,20 @@ const Login = () => {
         if (!emailRef.current || !passwordRef.current) {
             Alert.alert("Login", "Please fill all fields");
             return;
+        }
+
+        let email = emailRef.current.trim();
+        let password = passwordRef.current.trim();
+        setLoading(true);
+        const { error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        });
+
+        setLoading(false);
+
+        if (error) {
+            Alert.alert("Login", error.message);
         }
     }
 
