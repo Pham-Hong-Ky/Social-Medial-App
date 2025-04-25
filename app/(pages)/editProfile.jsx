@@ -5,7 +5,7 @@ import { hp, wp } from "../../helper/common";
 import { theme } from "../../constants/theme";
 import ScreenWapper from "../../components/ScreenWrapper"
 import Header from "../../components/Header";
-import { getUserImageSrc } from "../../services/imageService";
+import { getUserImageSrc, uploadImageFromPhone } from "../../services/imageService";
 import Icon from "../../assets/icons";
 import Input from "../../components/Input";
 import { useState, useEffect } from "react";
@@ -18,7 +18,8 @@ const EditProfile = () => {
 
     const router = useRouter();
     const { user: currentUser, setUserData } = useAuth();
-    const [loading, setLoading ] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [file, setFile] = useState(file);
 
     const [user, setUser] = useState({
         name: '',
@@ -50,42 +51,47 @@ const EditProfile = () => {
             quality: 0.7,
         });
 
-        // console.log("result", result)
-
-        if(!result.canceled) {
+        if (!result.canceled) {
             setUser({ ...user, image: result.assets[0].uri });
+            setFile(result.assets[0]);
         }
     }
 
     const onSubmit = async () => {
-        let userData = {...user}
-        let {name, phoneNumber, bio, image, address} = userData;
+        let userData = { ...user }
+        let { name, phoneNumber, bio, image, address } = userData;
         if (!name || !phoneNumber || !bio || !address || !image) {
             Alert.alert("Edit Profile", "Please fill all the fields")
             return
         }
         setLoading(true);
 
-        if(typeof image == 'object') {
+        if (typeof image == 'object') {
             console.log("image", image)
             let imageRes = await upLoadFile('profiles', image?.uri, true);
 
-            if(imageRes.success) {
+            if (imageRes.success) {
                 userData.image = imageRes.data;
             } else {
                 userData.image = null;
             }
+        } else {
+            let resUpload = await uploadImageFromPhone(file);
+            if (resUpload.success) {
+                userData.image = resUpload.data;
+            } else {
+                userData.image = null;
+            }
         }
+        // console.log("userData", userData);
 
         const res = await updateUser(currentUser.id, userData);
         setLoading(false)
-        
+
         if (res.success) {
-            setUserData({...currentUser, ...userData});
+            setUserData({ ...currentUser, ...userData });
             router.back()
         }
-
-        console.log(typeof user.image)
     }
 
     let imageSrc = user.image && typeof user.image == 'object' ? user.image.uri : getUserImageSrc(user.image);
@@ -103,23 +109,23 @@ const EditProfile = () => {
                                 <Icon name="camera" size={20} strokeWidth={2.5} />
                             </Pressable>
                         </View>
-                        <Text style={{ fontSize: hp(1.5), color: theme.colors.text}}>
+                        <Text style={{ fontSize: hp(1.5), color: theme.colors.text }}>
                             Pleas fill your profile details
                         </Text>
                         <Input
-                            icon={<Icon name="user"/>}
+                            icon={<Icon name="user" />}
                             placeholder="Enter your name"
                             onChangeText={(value) => setUser({ ...user, name: value })}
                             value={user.name}
                         />
                         <Input
-                            icon={<Icon name="call"/>}
+                            icon={<Icon name="call" />}
                             placeholder="Enter your phone number"
                             onChangeText={(value) => setUser({ ...user, phoneNumber: value })}
                             value={user.phoneNumber}
                         />
                         <Input
-                            icon={<Icon name="location"/>}
+                            icon={<Icon name="location" />}
                             placeholder="Enter your address"
                             onChangeText={(value) => setUser({ ...user, address: value })}
                             value={user.address}

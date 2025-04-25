@@ -1,13 +1,12 @@
 import * as FileSystem from 'expo-file-system';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from '../lib/supabase';
-import { supabaseUrl } from '../constants';
-import { get } from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
+import { supabaseUrl, supabaseAnonKey } from '../constants';
 
 export const getUserImageSrc = imagePath => {
     if (imagePath) {
-        // return getSupabaseFileUrl(imagePath);
-        return { uri: imagePath }
+        return getSupabaseFileUrl(imagePath);
+        // return { uri: imagePath }
     } else {
         return require('../assets/images/user.png');
     }
@@ -43,8 +42,8 @@ export const upLoadFile = async (folderName, fileUri, isImage = true) => {
 }
 
 export const getSupabaseFileUrl = (filePath) => {
-    if(filePath){
-        return {uri: `${supabaseUrl}/storage/v1/object/public/uploads/${filePath}`};
+    if (filePath) {
+        return { uri: `${supabaseUrl}/storage/v1/object/public/uploads/${filePath}` };
     }
     return null;
 }
@@ -52,4 +51,23 @@ export const getSupabaseFileUrl = (filePath) => {
 
 export const getFilePath = (folderName, isImage = true) => {
     return `${folderName}/${(new Date()).getTime()}${isImage ? '.png' : '.mp4'}`;
+}
+
+
+export const uploadImageFromPhone = async (file) => {
+    try {
+        if (file && typeof file === 'object') {
+            let isImage = file.type == 'image' ? true : false;
+            let folderName = isImage ? 'profiles' : '';
+            let fileResult = await upLoadFile(folderName, file.uri, isImage);
+            if (fileResult.success) file = fileResult.data;
+            else {
+                return fileResult;
+            }
+        }
+        return { success: true, data: file };
+    } catch (error) {
+        console.log("Error : ", error);
+        return { success: false, msg: 'Could not upload image from phone' };
+    }
 }

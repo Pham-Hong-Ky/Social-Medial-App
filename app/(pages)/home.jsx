@@ -1,29 +1,47 @@
-import { Button, Pressable, Text, View } from 'react-native';
+import { FlatList, Pressable, Text, View } from 'react-native';
 import ScreenWrapper from '../../components/ScreenWrapper';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
 import { StyleSheet } from 'react-native';
 import { wp, hp } from '../../helper/common';
 import { theme } from '../../constants/theme';
 import Icon from '../../assets/icons';
 import { useRouter } from 'expo-router';
 import Avatar from '../../components/Avatar';
-import { getUserImageSrc } from '../../services/imageService';
+import { useEffect, useState } from 'react';
+import { fectchPosts } from '../../services/postService';
+import PostCard from '../../components/PostCard';
+import Loading from '../../components/Loading';
 
+var limit = 0;
 
 const Home = () => {
 
     const { user, setAuth } = useAuth();
-    const route = useRouter();
+    const router = useRouter();
 
-    const onLogout = async () => {
-        // setAuth(null);
+    const [posts, setPosts] = useState([]);
 
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-            Alert.alert("Logout", error.message);
+    useEffect(() => {
+        getPosts();
+    }, [])
+
+    const getPosts = async () => {
+        limit = limit + 10;
+        let result = await fectchPosts(limit);
+        if (result.success) {
+            setPosts(result.data);
         }
+
     }
+
+    // const onLogout = async () => {
+    //     // setAuth(null);
+
+    //     const { error } = await supabase.auth.signOut();
+    //     if (error) {
+    //         Alert.alert("Logout", error.message);
+    //     }
+    // }
 
     return (
         <ScreenWrapper bg='white'>
@@ -32,19 +50,33 @@ const Home = () => {
                 <View style={styles.header}>
                     <Text style={styles.title}>LinkUp</Text>
                     <View style={styles.icons}>
-                        <Pressable onPress={() => route.push('notification')}>
+                        <Pressable onPress={() => router.push('notification')}>
                             <Icon name="heart" size={hp(3.2)} strokeWidth={2} color={theme.colors.text} />
                         </Pressable>
-                        <Pressable onPress={() => route.push('newPost')}>
+                        <Pressable onPress={() => router.push('newPost')}>
                             <Icon name="plus" size={hp(3.2)} strokeWidth={2} color={theme.colors.text} />
                         </Pressable>
-                        <Pressable onPress={() => route.push('profile')}>
-                            <Avatar url={user?.image} size={hp(4.3)} rounded={theme.radius.sm} style={{borderWidth: 2}} />
+                        <Pressable onPress={() => router.push('profile')}>
+                            <Avatar url={user?.image} size={hp(4.3)} rounded={theme.radius.sm} style={{ borderWidth: 2 }} />
                         </Pressable>
                     </View>
                 </View>
+                <FlatList
+                    data={posts}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.listStyle}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item }) => (
+                        <PostCard item={item} currentUser={user} router={router} />
+                    )}
+                    ListFooterComponent={(
+                        <View style={{ paddingVertical: posts.length == 0 ? 200: 30 }}>
+                            <Loading />
+                        </View> 
+                    )}
+                />
             </View>
-            {/* <Button title='logout' onPress={onLogout}></Button> */}
+
         </ScreenWrapper>
     );
 }

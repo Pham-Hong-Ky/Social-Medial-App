@@ -47,6 +47,7 @@ const NewPost = () => {
         if (!result.canceled) {
             setFile(result.assets[0]);
         }
+
     }
 
     const getFileUrl = (file) => {

@@ -4,6 +4,9 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
 import { getUserData } from "@/services/userService";
+import { LogBox } from "react-native";
+
+LogBox.ignoreLogs(['Warning: TNodeChildrenRenderer', 'Warning: MemoizedTNodeRenderer', 'Warning: TRenderEngineProvider']);
 
 const _layout = () => {
   return (
