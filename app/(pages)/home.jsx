@@ -11,42 +11,59 @@ import { useEffect, useState } from 'react';
 import { fectchPosts } from '../../services/postService';
 import PostCard from '../../components/PostCard';
 import Loading from '../../components/Loading';
+import { supabase } from '../../lib/supabase';
+import { getUserData } from '../../services/userService';
 
 var limit = 0;
 
 const Home = () => {
-
     const { user, setAuth } = useAuth();
     const router = useRouter();
-
     const [posts, setPosts] = useState([]);
+    const [hasMore, setHasMore] = useState(true);
+
+    const handlePostEvent = async (payLoad) => {
+        if( payLoad.eventType == 'INSERT' && payLoad?.new?.id) {
+            let newPost = {...payLoad.new};
+            let res = await getUserData(newPost.userId);
+            newPost.postLikes = [];
+            newPost.comments = [{count: 0}];
+            newPost.user = res.success ? res.data : [];
+            setPosts((prev) => [newPost, ...prev]);
+        }
+        if (payLoad.eventType == 'DELETE' && payLoad?.old?.id) {
+            setPosts((prev) => {
+                return prev.filter((post) => post.id != payLoad.old.id);;
+            })
+        }
+    }
 
     useEffect(() => {
-        getPosts();
+        let postChannel = supabase
+            .channel('posts')
+            .on('postgres_changes', {event: '*', schema: 'public', table: 'posts'}, handlePostEvent)
+            .subscribe()
+
+        return () =>{
+            supabase.removeChannel(postChannel);
+        }
     }, [])
 
     const getPosts = async () => {
+        if (!hasMore) return null;
+
         limit = limit + 10;
         let result = await fectchPosts(limit);
         if (result.success) {
+            if(posts.length == result.data.length) setHasMore(false);
+
             setPosts(result.data);
         }
-
     }
-
-    // const onLogout = async () => {
-    //     // setAuth(null);
-
-    //     const { error } = await supabase.auth.signOut();
-    //     if (error) {
-    //         Alert.alert("Logout", error.message);
-    //     }
-    // }
 
     return (
         <ScreenWrapper bg='white'>
             <View style={styles.container}>
-
                 <View style={styles.header}>
                     <Text style={styles.title}>LinkUp</Text>
                     <View style={styles.icons}>
@@ -69,14 +86,20 @@ const Home = () => {
                     renderItem={({ item }) => (
                         <PostCard item={item} currentUser={user} router={router} />
                     )}
-                    ListFooterComponent={(
+                    ListFooterComponent={ hasMore ? (
                         <View style={{ paddingVertical: posts.length == 0 ? 200: 30 }}>
                             <Loading />
                         </View> 
+                    ) : (
+                        <View>
+                            <Text style={styles.noPosts}> No more posts ! </Text>
+                        </View>
                     )}
+
+                    onEndReachedThreshold={0}
+                    onEndReached={() => getPosts()}
                 />
             </View>
-
         </ScreenWrapper>
     );
 }

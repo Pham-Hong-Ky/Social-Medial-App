@@ -18,18 +18,18 @@ const _layout = () => {
 
 const MainLayout = () => {
 
-  const {setAuth, setUserData} = useAuth();
+  const { setAuth, setUserData } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     supabase.auth.onAuthStateChange((_event, session) => {
       console.log("session user: ", session?.user?.id);
 
-      if(session) {
+      if (session) {
         setAuth(session?.user);
         updateUserData(session?.user, session?.user?.email);
         router.replace("/home")
-      } else{
+      } else {
         setAuth(null);
         router.replace("/welcome")
       }
@@ -39,7 +39,7 @@ const MainLayout = () => {
   const updateUserData = async (user, email) => {
     let res = await getUserData(user?.id);
 
-    if(res?.success) setUserData({...res.data, email});
+    if (res?.success) setUserData({ ...res.data, email });
   }
 
   return (
@@ -47,7 +47,9 @@ const MainLayout = () => {
       screenOptions={{
         headerShown: false,
       }}
-    />
+    >
+      <Stack.Screen name="(pages)/postDetails" options={{presentation: 'modal'}} />
+    </Stack>
   );
 }
 

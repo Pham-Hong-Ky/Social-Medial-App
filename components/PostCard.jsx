@@ -1,19 +1,25 @@
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Image, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { theme } from "../constants/theme";
-import { wp, hp } from "../helper/common";
+import { wp, hp, stripHtmlTag } from "../helper/common";
 import Avatar from "../components/Avatar";
 import moment from "moment";
 import Icon from "../assets/icons";
 import RenderHtml from "react-native-render-html";
-import { getSupabaseFileUrl } from "../services/imageService";
+import { downloadFile, getSupabaseFileUrl } from "../services/imageService";
 import { Video } from 'expo-av';
-
+import { createPostLike, removePostLike } from "../services/postService";
+import { useEffect, useMemo, useState } from "react";
+import Loading from "./Loading";
 
 const PostCard = ({
     item,
     currentUser,
     router,
     hasShawdow = true,
+    showMoreIcon = true,
+    showDelete = false,
+    onDeletePost = () => { },
+    onEditPost = () => { },
 }) => {
     const shadowStyle = {
         shadowOffset: { width: 0, height: 1 },
@@ -40,12 +46,69 @@ const PostCard = ({
     }
 
     const createdAt = moment(item?.created_at).format('MMM D');
+    const [likes, setLikes] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const htmlContent = useMemo(() => ({ html: item?.body || '' }), [item?.body]);
+
+    const liked = likes.filter((like) => like.userId == currentUser?.id)[0] ? true : false;
+    useEffect(() => {
+        setLikes(item?.postLikes || []);
+    }, [item])
 
     const openPostDetails = () => {
-
+        if (!showMoreIcon) return null;
+        router.push({ pathname: '(pages)/postDetails', params: { postId: item?.id } });
     }
-    const likes = [];
-    const liked = false;
+
+    const onLike = async () => {
+        if (liked) {
+            let updateLike = likes.filter((like) => like.userId != currentUser?.id);
+            setLikes([...updateLike]);
+            let result = await removePostLike(item?.id, currentUser?.id);
+            console.log('remove like: ', result);
+            if (!result.success) {
+                Alert.alert('Post', 'Something went wrong!');
+            }
+        } else {
+            let data = {
+                userId: currentUser?.id,
+                postId: item?.id,
+            }
+            setLikes([...likes, data]);
+            let result = await createPostLike(data);
+            console.log('Add like: ', result);
+            if (!result.success) {
+                Alert.alert('Post', 'Something went wrong!');
+            }
+        }
+    }
+
+    const onShare = async () => {
+        let content = { message: stripHtmlTag(item?.body) }
+        if (item?.file) {
+            setLoading(true);
+            let url = await downloadFile(getSupabaseFileUrl(item?.file).uri);
+            setLoading(false);
+            content.url = url;
+        }
+        Share.share(content)
+    }
+
+    const handelDeletePost = () => {
+        Alert.alert("Post", "Are you sure you want to delete this post", [
+            {
+                text: "Cancel",
+                onPress: async () => console.log("cancelled"),
+                style: "cancel",
+            },
+            {
+                text: "Delete",
+                onPress: () => onDeletePost(item),
+                style: "destructive",
+            },
+        ]);
+    }
+
     return (
         <View style={[styles.container, hasShawdow && shadowStyle]}>
             <View style={styles.header}>
@@ -60,65 +123,85 @@ const PostCard = ({
                         </Text>
                     </View>
                 </View>
-
-                <TouchableOpacity onPress={openPostDetails}>
-                    <Icon name='threeDotsHorizontal' size={hp(3.4)} strokeWidth={3} color={theme.colors.text} />
-                </TouchableOpacity>
+                {
+                    showMoreIcon && (
+                        <TouchableOpacity onPress={openPostDetails}>
+                            <Icon name='threeDotsHorizontal' size={hp(3.4)} strokeWidth={3} color={theme.colors.text} />
+                        </TouchableOpacity>
+                    )
+                }
+                {
+                    showDelete && currentUser?.id == item?.userId && (
+                        <View style={styles.actions}>
+                            <TouchableOpacity onPress={() => onEditPost(item)}>
+                                <Icon name='edit' color={theme.colors.text} size={hp(2.4)} strokeWidth={3} />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={handelDeletePost}>
+                                <Icon name='delete' color={theme.colors.rose} size={hp(2.4)} strokeWidth={3} />
+                            </TouchableOpacity>
+                        </View>
+                    )
+                }
             </View>
-
             <View style={styles.content}>
                 <View style={styles.postBody}>
                     {
                         item?.body &&
-                        <RenderHtml contentWidth={wp(100)} source={{ html: item?.body }} tagsStyles={tagsStyles} />
+                        <RenderHtml contentWidth={wp(100)} source={htmlContent} tagsStyles={tagsStyles} />
                     }
                 </View>
-
                 {
                     item?.file && item?.file?.includes('postImages') && (
-                        <Image 
-                            source={getSupabaseFileUrl(item?.file)} 
-                            transition={100} 
-                            style={styles.postMedia} 
-                            contentFit='cover' 
+                        <Image
+                            source={getSupabaseFileUrl(item?.file)}
+                            transition={100}
+                            style={styles.postMedia}
+                            contentFit='cover'
                         />
                     )
                 }
-
                 {
                     item?.file && item?.file?.includes('postVideos') && (
-                        <Video 
-                            source={getSupabaseFileUrl(item?.file)} 
-                            style={[styles.postMedia, {height: hp(30)}]} 
-                            useNativeControls 
-                            resizeMode="cover" 
-                            isLooping 
+                        <Video
+                            source={getSupabaseFileUrl(item?.file)}
+                            style={[styles.postMedia, { height: hp(30) }]}
+                            useNativeControls
+                            resizeMode="cover"
+                            isLooping
                         />
                     )
                 }
             </View>
-
             <View style={styles.footer}>
                 <View style={styles.footerButton}>
-                    <TouchableOpacity>
-                        <Icon name="heart" size={24} fill={liked ? theme.colors.rose : 'transparent'} color={ theme.colors.textLight }/>
+                    <TouchableOpacity onPress={onLike}>
+                        <Icon name="heart" size={24} fill={liked ? theme.colors.rose : 'transparent'} color={theme.colors.textLight} />
                     </TouchableOpacity>
                     <Text style={styles.count}>
-                        { likes.length }
+                        {likes.length}
                     </Text>
                 </View>
                 <View style={styles.footerButton}>
-                    <TouchableOpacity>
-                        <Icon name="comment" size={24} color={ theme.colors.textLight }/>
+                    <TouchableOpacity onPress={openPostDetails}>
+                        <Icon name="comment" size={24} color={theme.colors.textLight} />
                     </TouchableOpacity>
                     <Text style={styles.count}>
-                        { 0 }
+                        {
+                            item?.comments[0]?.count
+                        }
                     </Text>
                 </View>
                 <View style={styles.footerButton}>
-                    <TouchableOpacity>
-                        <Icon name="share" size={24} color={theme.colors.textLight}/>
-                    </TouchableOpacity>
+
+                    {
+                        loading ? (
+                            <Loading />
+                        ) : (
+                            <TouchableOpacity onPress={onShare}>
+                                <Icon name="share" size={24} color={theme.colors.textLight} />
+                            </TouchableOpacity>
+                        )
+                    }
                 </View>
             </View>
         </View>

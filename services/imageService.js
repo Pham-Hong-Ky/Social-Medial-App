@@ -53,6 +53,21 @@ export const getFilePath = (folderName, isImage = true) => {
     return `${folderName}/${(new Date()).getTime()}${isImage ? '.png' : '.mp4'}`;
 }
 
+export const downloadFile = async (url) => {
+    try {
+        const localPath = await getLocalFilePath(url);
+        const { uri } = await FileSystem.downloadAsync(url, localPath);
+        return uri;
+    } catch (error) {
+        console.log("Error downloading file: ", error);
+        return null;
+    }
+}
+
+export const getLocalFilePath = async (filePath) => {
+    let fileName = filePath.split('/').pop();
+    return `${FileSystem.documentDirectory}${fileName}`;
+}
 
 export const uploadImageFromPhone = async (file) => {
     try {
