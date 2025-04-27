@@ -21,13 +21,14 @@ const Home = () => {
     const router = useRouter();
     const [posts, setPosts] = useState([]);
     const [hasMore, setHasMore] = useState(true);
+    const [notificationCount, setNotificationCount] = useState(0);
 
     const handlePostEvent = async (payLoad) => {
-        if( payLoad.eventType == 'INSERT' && payLoad?.new?.id) {
-            let newPost = {...payLoad.new};
+        if (payLoad.eventType == 'INSERT' && payLoad?.new?.id) {
+            let newPost = { ...payLoad.new };
             let res = await getUserData(newPost.userId);
             newPost.postLikes = [];
-            newPost.comments = [{count: 0}];
+            newPost.comments = [{ count: 0 }];
             newPost.user = res.success ? res.data : [];
             setPosts((prev) => [newPost, ...prev]);
         }
@@ -36,16 +37,39 @@ const Home = () => {
                 return prev.filter((post) => post.id != payLoad.old.id);;
             })
         }
+        if (payLoad.eventType == 'UPDATE' && payLoad?.new?.id) {
+            setPosts((prev) => {
+                return prev.map((post) => {
+                    if (post.id == payLoad.new.id) {
+                        post.body = payLoad.new.body;
+                        post.file = payLoad.new.file;
+                    }
+                    return post;
+                });
+            });
+        }
+    }
+
+    const handleNewNotification = async (payLoad) => {
+        if(payLoad.eventType == 'INSERT' && payLoad?.new?.id) {
+            setNotificationCount((prev) => prev + 1);
+        }
     }
 
     useEffect(() => {
         let postChannel = supabase
             .channel('posts')
-            .on('postgres_changes', {event: '*', schema: 'public', table: 'posts'}, handlePostEvent)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, handlePostEvent)
             .subscribe()
 
-        return () =>{
+        let notificationChannel = supabase
+            .channel('notification')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notification', filter: `receiverID=eq.${user.id}` }, handleNewNotification)
+            .subscribe()
+
+        return () => {
             supabase.removeChannel(postChannel);
+            supabase.removeChannel(notificationChannel);
         }
     }, [])
 
@@ -55,7 +79,7 @@ const Home = () => {
         limit = limit + 10;
         let result = await fectchPosts(limit);
         if (result.success) {
-            if(posts.length == result.data.length) setHasMore(false);
+            if (posts.length == result.data.length) setHasMore(false);
 
             setPosts(result.data);
         }
@@ -69,6 +93,17 @@ const Home = () => {
                     <View style={styles.icons}>
                         <Pressable onPress={() => router.push('notification')}>
                             <Icon name="heart" size={hp(3.2)} strokeWidth={2} color={theme.colors.text} />
+                            {
+                                notificationCount > 0 && (
+                                    <View style={styles.pills}>
+                                        <Text style={styles.pillText}>
+                                            {
+                                                notificationCount
+                                            }
+                                        </Text>
+                                    </View>
+                                )
+                            }
                         </Pressable>
                         <Pressable onPress={() => router.push('newPost')}>
                             <Icon name="plus" size={hp(3.2)} strokeWidth={2} color={theme.colors.text} />
@@ -86,10 +121,10 @@ const Home = () => {
                     renderItem={({ item }) => (
                         <PostCard item={item} currentUser={user} router={router} />
                     )}
-                    ListFooterComponent={ hasMore ? (
-                        <View style={{ paddingVertical: posts.length == 0 ? 200: 30 }}>
+                    ListFooterComponent={hasMore ? (
+                        <View style={{ paddingVertical: posts.length == 0 ? 200 : 30 }}>
                             <Loading />
-                        </View> 
+                        </View>
                     ) : (
                         <View>
                             <Text style={styles.noPosts}> No more posts ! </Text>

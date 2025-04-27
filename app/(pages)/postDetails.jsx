@@ -12,9 +12,10 @@ import Icon from "../../assets/icons";
 import CommentItem from "../../components/CommentItem";
 import { supabase } from '../../lib/supabase';
 import { getUserData } from "../../services/userService";
+import { createNotification } from "../../services/notificationService";
 
 const PostDetails = () => {
-    const { postId } = useLocalSearchParams();
+    const { postId, commentId } = useLocalSearchParams();
     const [post, setPost] = useState(null);
     const { user } = useAuth();
     const router = useRouter();
@@ -70,6 +71,18 @@ const PostDetails = () => {
         let result = await createComment(data);
         setLoading(false);
         if (result.success) {
+            // Notification
+            if (user?.id != post?.userId) {
+                let noti = {
+                    senderId: user?.id,
+                    receiverId: post?.userId,
+                    title: 'Commented on your post',
+                    data : JSON.stringify({ postId: post.id, commentId: result?.data?.id }),
+                }
+
+                createNotification(noti);
+
+            }
             inputRef?.current?.clear();
             commentRef.current = "";
         } else {
@@ -160,6 +173,7 @@ const PostDetails = () => {
                             <CommentItem
                                 item={comment}
                                 key={comment?.id.toString()}
+                                highlight={ comment?.id == commentId }
                                 canDelete={comment.userId == user?.id || post?.userId == user?.id}
                                 onDelete={() => onDeleteComment(comment)}
                             />

@@ -1,4 +1,4 @@
-import { Alert, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, FlatList, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import SrceenWrapper from "../../components/ScreenWrapper";
 import { useAuth } from "../../contexts/AuthContext";
 import { useRouter } from "expo-router";
@@ -8,11 +8,17 @@ import Icon from "../../assets/icons";
 import { theme } from "../../constants/theme";
 import { supabase } from "@/lib/supabase";
 import Avatar from "../../components/Avatar";
+import { useState } from "react";
+import { fectchPosts } from "../../services/postService";
+import Loading from "../../components/Loading";
+import PostCard from "../../components/PostCard";
 
-
+var limit = 0;
 const Profile = () => {
     const { user, userAuth } = useAuth();
     const router = useRouter();
+    const [posts, setPosts] = useState([]);
+    const [hasMore, setHasMore] = useState(true);
 
     const onLogout = async () => {
         // setAuth(null);
@@ -22,6 +28,18 @@ const Profile = () => {
             Alert.alert("Logout", error.message);
         }
     }
+
+    const getPosts = async () => {
+            if (!hasMore) return null;
+    
+            limit = limit + 10;
+            let result = await fectchPosts(limit, user.id);
+            if (result.success) {
+                if(posts.length == result.data.length) setHasMore(false);
+    
+                setPosts(result.data);
+            }
+        }
 
     const handleLogout = async () => {
         Alert.alert("Logout", "Are you sure you want to logout?", [
@@ -39,7 +57,29 @@ const Profile = () => {
     }
     return (
         <SrceenWrapper bg='white'>
-            <UserHeader user={user} router={router} handleLogout={handleLogout} />
+            <FlatList
+                    data={posts}
+                    ListHeaderComponent={<UserHeader user={user} router={router} handleLogout={handleLogout} />}
+                    ListHeaderComponentStyle={{ paddingBottom: 30 }}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.listStyle}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item }) => (
+                        <PostCard item={item} currentUser={user} router={router} />
+                    )}
+                    ListFooterComponent={ hasMore ? (
+                        <View style={{ paddingVertical: posts.length == 0 ? 100: 30 }}>
+                            <Loading />
+                        </View> 
+                    ) : (
+                        <View>
+                            <Text style={styles.noPosts}> No more posts ! </Text>
+                        </View>
+                    )}
+
+                    onEndReachedThreshold={0}
+                    onEndReached={() => getPosts()}
+                />
         </SrceenWrapper>
     )
 }

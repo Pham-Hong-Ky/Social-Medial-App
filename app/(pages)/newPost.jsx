@@ -6,8 +6,8 @@ import { theme } from "../../constants/theme";
 import { hp, wp } from "../../helper/common";
 import Avatar from "../../components/Avatar";
 import { useAuth } from "../../contexts/AuthContext";
-import { useRef, useState } from "react";
-import { useRouter } from "expo-router";
+import { useEffect, useRef, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import RichTextEditor from "../../components/RichTextEditor";
 import Icon from "../../assets/icons";
 import Button from "../../components/Button";
@@ -23,9 +23,19 @@ const NewPost = () => {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [file, setFile] = useState(file);
+    const post = useLocalSearchParams();
+
+    useEffect(() => {
+        if (post && post?.id){
+            bodyRef.current = post.body;
+            setFile(post.file || null);
+            setTimeout(() => {
+                editorRef?.current?.setContentHTML(post.body);
+            }, 300);
+        }
+    }, []);
 
     const onPick = async (isImage) => {
-
         let mediaConfig = {
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             // mediaTypes: ImagePicker.Images,
@@ -43,11 +53,9 @@ const NewPost = () => {
         }
 
         let result = await ImagePicker.launchImageLibraryAsync(mediaConfig);
-
         if (!result.canceled) {
             setFile(result.assets[0]);
         }
-
     }
 
     const getFileUrl = (file) => {
@@ -81,6 +89,9 @@ const NewPost = () => {
             body: bodyRef.current,
             userId: user.id,
         }
+
+        if (post && post.id) data.id = post.id;
+
         setLoading(true);
         let result = await createOrUpdatePost(data);
         setLoading(false);
@@ -103,7 +114,7 @@ const NewPost = () => {
         <SrceenWapper bg='white'>
             <TouchableWithoutFeedback onPress={hiddenKeyboard} accessible={false}>
             <View style={styles.container}>
-                <Header title='Create Posts' />
+                <Header title={post && post.id ? 'Info Post' : 'Create New Post'} />
                 
                     <ScrollView contentContainerStyle={{ gap: 20 }} keyboardShouldPersistTaps="handled" >
                         <View style={styles.header}>
@@ -140,7 +151,6 @@ const NewPost = () => {
                             )
                         }
 
-
                         <View style={styles.media}>
                             <Text style={styles.addImageText}>Add to your post</Text>
                             <View style={styles.mediaIcon}>
@@ -155,7 +165,12 @@ const NewPost = () => {
 
                     </ScrollView>
                 
-                <Button buttonStyle={{ height: hp(6.2) }} loading={loading} title="Post" onPress={onSubmit} />
+                <Button 
+                    buttonStyle={{ height: hp(6.2) }} 
+                    loading={loading} 
+                    title={post && post?.id ? 'Update' : 'Post'}
+                    onPress={onSubmit} 
+                />
             </View>
             </TouchableWithoutFeedback>
         </SrceenWapper>

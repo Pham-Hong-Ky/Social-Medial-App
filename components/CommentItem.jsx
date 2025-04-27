@@ -7,7 +7,7 @@ import Icon from "../assets/icons";
 import { useState } from "react";
 
 
-const CommentItem = ({ item, canDelete=false, onDelete = () => {} }) => {
+const CommentItem = ({ item, canDelete=false, highlight=false, onDelete = () => {} }) => {
 
     const created_at = moment(item?.created_at).format('MMM d');
 
@@ -33,7 +33,7 @@ const CommentItem = ({ item, canDelete=false, onDelete = () => {} }) => {
             <Avatar
                 url={item?.user?.image}
             />
-            <View style={styles.content}>
+            <View style={[styles.content, highlight && styles.highlight]}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <View style={styles.nameContainer}>
                         <Text style={styles.text}>

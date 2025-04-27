@@ -30,20 +30,35 @@ export const createOrUpdatePost = async (post) => {
     }
 }
 
-export const fectchPosts = async (limit = 10) => {
+export const fectchPosts = async (limit = 10, userId) => {
     try {
-        const { data, error } = await supabase
-            .from('posts')
-            .select('*, user: users(id, name, image), postLikes(*), comments(count)')
-            .order('created_at', { ascending: false })
-            .limit(limit);
+        if (userId) {
+            const { data, error } = await supabase
+                .from('posts')
+                .select('*, user: users(id, name, image), postLikes(*), comments(count)')
+                .order('created_at', { ascending: false })
+                .eq('userId', userId)
+                .limit(limit);
 
-        if (error) {
-            console.log("Error fetching posts: ", error);
-            return { success: false, msg: 'Could not fetch posts' };
+            if (error) {
+                console.log("Error fetching posts: ", error);
+                return { success: false, msg: 'Could not fetch posts' };
+            }
+            return { success: true, data: data };
+        } else {
+            const { data, error } = await supabase
+                .from('posts')
+                .select('*, user: users(id, name, image), postLikes(*), comments(count)')
+                .order('created_at', { ascending: false })
+                .limit(limit);
+
+            if (error) {
+                console.log("Error fetching posts: ", error);
+                return { success: false, msg: 'Could not fetch posts' };
+            }
+            return { success: true, data: data };
         }
 
-        return { success: true, data: data };
 
     } catch (error) {
         console.log("Error fetching posts: ", error);
@@ -172,27 +187,5 @@ export const removePost = async (postId) => {
     } catch (error) {
         console.log("Error removing post: ", error);
         return { success: false, msg: 'Could not remove post' };
-    }
-}
-
-export const editPost = async (postId, post) => {
-    try {
-        const { data, error } = await supabase
-            .from('posts')
-            .update(post)
-            .eq('id', postId)
-            .select()
-            .single();
-
-        if (error) {
-            console.log("Error editing post: ", error);
-            return { success: false, msg: 'Could not edit post' };
-        }
-
-        return { success: true, data: data };
-
-    } catch (error) {
-        console.log("Error editing post: ", error);
-        return { success: false, msg: 'Could not edit post' };
     }
 }
