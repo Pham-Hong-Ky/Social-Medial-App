@@ -92,7 +92,7 @@ const Home = () => {
                     <Text style={styles.title}>LinkUp</Text>
                     <View style={styles.icons}>
                         <Pressable onPress={() => router.push('notification')}>
-                            <Icon name="heart" size={hp(3.2)} strokeWidth={2} color={theme.colors.text} />
+                            <Icon name="notification" size={hp(3.2)} strokeWidth={2} color={theme.colors.text} />
                             {
                                 notificationCount > 0 && (
                                     <View style={styles.pills}>
@@ -105,8 +105,8 @@ const Home = () => {
                                 )
                             }
                         </Pressable>
-                        <Pressable onPress={() => router.push('newPost')}>
-                            <Icon name="plus" size={hp(3.2)} strokeWidth={2} color={theme.colors.text} />
+                        <Pressable>
+                            <Icon name="message" size={hp(3.2)} strokeWidth={2} color={theme.colors.text} />
                         </Pressable>
                         <Pressable onPress={() => router.push('profile')}>
                             <Avatar url={user?.image} size={hp(4.3)} rounded={theme.radius.sm} style={{ borderWidth: 2 }} />

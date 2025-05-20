@@ -22,6 +22,9 @@ import Logout from './logout';
 import Image from './Image';
 import Video from './Video';
 import Home from './Home';
+import UserGroup from './UserGroup';
+import Message from './Message';
+import Notification from './Notification';
 
 const icons = {
     home: Home,
@@ -45,6 +48,9 @@ const icons = {
     logout: Logout,
     image: Image,
     video: Video,
+    userGroup: UserGroup,
+    message: Message,
+    notification: Notification,
 }
 
 const Icon = ({name, ...props}) => {

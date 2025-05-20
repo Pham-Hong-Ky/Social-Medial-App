@@ -114,7 +114,7 @@ const NewPost = () => {
         <SrceenWapper bg='white'>
             <TouchableWithoutFeedback onPress={hiddenKeyboard} accessible={false}>
             <View style={styles.container}>
-                <Header title={post && post.id ? 'Info Post' : 'Create New Post'} />
+                <Header title={post && post.id ? 'Info Post' : 'Create New Post'} showButtonBack={false} />
                 
                     <ScrollView contentContainerStyle={{ gap: 20 }} keyboardShouldPersistTaps="handled" >
                         <View style={styles.header}>

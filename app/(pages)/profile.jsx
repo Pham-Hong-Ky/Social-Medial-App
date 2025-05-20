@@ -1,45 +1,80 @@
 import { Alert, FlatList, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import SrceenWrapper from "../../components/ScreenWrapper";
 import { useAuth } from "../../contexts/AuthContext";
-import { useRouter } from "expo-router";
 import Header from "../../components/Header";
 import { hp, wp } from "../../helper/common";
 import Icon from "../../assets/icons";
 import { theme } from "../../constants/theme";
 import { supabase } from "@/lib/supabase";
 import Avatar from "../../components/Avatar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { fectchPosts } from "../../services/postService";
 import Loading from "../../components/Loading";
 import PostCard from "../../components/PostCard";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { getUserById } from "../../services/userService";
+import { RefreshControl } from "react-native";
 
 var limit = 0;
+
 const Profile = () => {
     const { user, userAuth } = useAuth();
     const router = useRouter();
     const [posts, setPosts] = useState([]);
     const [hasMore, setHasMore] = useState(true);
+    const viewedId = useLocalSearchParams();
+
+    const isMyProfile = !viewedId?.userId || viewedId.userId === user?.id;
+
+    const [profileData, setProfileData] = useState(user);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    const onRefresh = async () => {
+        setIsRefreshing(true);
+        // Reset posts và limit
+        setPosts([]);
+        setHasMore(true);
+        limit = 0;
+        await getPosts();
+        setIsRefreshing(false);
+    };
+
+    useEffect(() => {
+        if (!isMyProfile) {
+            getViewedUser().then((result) => {
+                if (result) setProfileData(result);
+            });
+        } else {
+            setProfileData(user);
+        }
+    }, [viewedId, isMyProfile, user]);
 
     const onLogout = async () => {
-        // setAuth(null);
-
         const { error } = await supabase.auth.signOut();
         if (error) {
             Alert.alert("Logout", error.message);
         }
-    }
+    };
+
+    const getViewedUser = async () => {
+        let result = await getUserById(viewedId.userId);
+        if (result.success) {
+            return result.data;
+        }
+        return null;
+    };
 
     const getPosts = async () => {
-            if (!hasMore) return null;
-    
-            limit = limit + 10;
-            let result = await fectchPosts(limit, user.id);
-            if (result.success) {
-                if(posts.length == result.data.length) setHasMore(false);
-    
-                setPosts(result.data);
-            }
+        if (!hasMore) return null;
+        limit = limit + 10;
+        // Use profileData.id if available, otherwise fallback to user.id
+        let targetUserId = isMyProfile ? user.id : profileData.id;
+        let result = await fectchPosts(limit, targetUserId);
+        if (result.success) {
+            if (posts.length === result.data.length) setHasMore(false);
+            setPosts(result.data);
         }
+    };
 
     const handleLogout = async () => {
         Alert.alert("Logout", "Are you sure you want to logout?", [
@@ -54,46 +89,56 @@ const Profile = () => {
                 style: "destructive",
             },
         ]);
-    }
+    };
+
     return (
         <SrceenWrapper bg='white'>
             <FlatList
-                    data={posts}
-                    ListHeaderComponent={<UserHeader user={user} router={router} handleLogout={handleLogout} />}
-                    ListHeaderComponentStyle={{ paddingBottom: 30 }}
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={styles.listStyle}
-                    keyExtractor={(item) => item.id}
-                    renderItem={({ item }) => (
-                        <PostCard item={item} currentUser={user} router={router} />
-                    )}
-                    ListFooterComponent={ hasMore ? (
-                        <View style={{ paddingVertical: posts.length == 0 ? 100: 30 }}>
-                            <Loading />
-                        </View> 
-                    ) : (
-                        <View>
-                            <Text style={styles.noPosts}> No more posts ! </Text>
-                        </View>
-                    )}
-
-                    onEndReachedThreshold={0}
-                    onEndReached={() => getPosts()}
-                />
+                data={posts}
+                refreshControl={
+                    <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+                }
+                ListHeaderComponent={
+                    <UserHeader
+                        user={profileData}
+                        router={router}
+                        handleLogout={handleLogout}
+                        isMyProfile={isMyProfile}
+                    />
+                }
+                ListHeaderComponentStyle={{ paddingBottom: 30 }}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.listStyle}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                    <PostCard item={item} currentUser={user} router={router} />
+                )}
+                ListFooterComponent={hasMore ? (
+                    <View style={{ paddingVertical: posts.length === 0 ? 100 : 30 }}>
+                        <Loading />
+                    </View>
+                ) : (
+                    <View>
+                        <Text style={styles.noPosts}> No more posts ! </Text>
+                    </View>
+                )}
+                onEndReachedThreshold={0}
+                onEndReached={() => getPosts()}
+            />
         </SrceenWrapper>
-    )
-}
-
-const UserHeader = ({ user, router, handleLogout }) => {
+    );
+};
+const UserHeader = ({ user, router, handleLogout, isMyProfile }) => {
     return (
         <View style={{ flex: 1, backgroundColor: 'white', paddingHorizontal: wp(4) }}>
             <View>
-                <Header title="Profile" mb={30} />
-                <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} >
-                    <Icon name="logout" color={theme.colors.rose} />
-                </TouchableOpacity>
+                <Header title="Profile" mb={30} showButtonBack={!isMyProfile} />
+                {isMyProfile && (
+                    <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} >
+                        <Icon name="logout" color={theme.colors.rose} />
+                    </TouchableOpacity>
+                )}
             </View>
-
             <View style={styles.container}>
                 <View style={{ gap: 15 }}>
                     <View style={styles.avatarContainer}>
@@ -102,11 +147,12 @@ const UserHeader = ({ user, router, handleLogout }) => {
                             size={hp(12)}
                             rounded={theme.radius.xxl * 1.4}
                         />
-                        <Pressable style={styles.editIcon} onPress={() => router.push('editProfile')}>
-                            <Icon name="edit" strokeWidth={2.4} size={20} />
-                        </Pressable>
+                        {isMyProfile && (
+                            <Pressable style={styles.editIcon} onPress={() => router.push('editProfile')}>
+                                <Icon name="edit" strokeWidth={2.4} size={20} />
+                            </Pressable>
+                        )}
                     </View>
-
                     <View style={{ alignItems: "center", gap: 4 }}>
                         <Text style={styles.userName}>
                             {user && user.name}
@@ -115,7 +161,6 @@ const UserHeader = ({ user, router, handleLogout }) => {
                             {user?.address}
                         </Text>
                     </View>
-
                     <View style={{ gap: 10 }}>
                         <View style={styles.info}>
                             <Icon name="mail" size={20} color={theme.colors.textLight} />
@@ -123,27 +168,23 @@ const UserHeader = ({ user, router, handleLogout }) => {
                                 {user && user?.email}
                             </Text>
                         </View>
-                        {
-                            user && user?.phoneNumber && (
-                                <View style={styles.info}>
-                                    <Icon name="call" size={20} color={theme.colors.textLight} />
-                                    <Text style={styles.infoText}>
-                                        {user && user?.phoneNumber}
-                                    </Text>
-                                </View>
-                            )
-                        }
-                        {
-                            user && user?.bio && (
-                                <Text>{user.bio}</Text>
-                            )
-                        }
+                        {user && user?.phoneNumber && (
+                            <View style={styles.info}>
+                                <Icon name="call" size={20} color={theme.colors.textLight} />
+                                <Text style={styles.infoText}>
+                                    {user && user?.phoneNumber}
+                                </Text>
+                            </View>
+                        )}
+                        {user && user?.bio && (
+                            <Text>{user.bio}</Text>
+                        )}
                     </View>
                 </View>
             </View>
         </View>
-    )
-}
+    );
+};
 
 export default Profile;
 
@@ -190,14 +231,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    headerShape: {
-        width: wp(100),
-        height: hp(30),
-    },
-    headerContainer: {
-        marginHorizontal: wp(4),
-        marginBottom: 20,
-    },
     avatarContainer: {
         alignSelf: "center",
         height: hp(12),
@@ -208,4 +241,4 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         color: theme.colors.textLight,
     },
-})
+});
